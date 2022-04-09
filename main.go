@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/miekg/dns"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -10,13 +11,24 @@ const (
 	server string = "localhost"
 )
 
+
+type RoundRobinState struct {
+	Family uint16   `json:"type"`
+	IPs    []string `json:"ip"`
+}
+
 func appendOpt(msg *dns.Msg) {
+	var rr = RoundRobinState{
+		Family: dns.TypeA,
+		IPs:    []string{"10.0.0.1","10.0.0.2","10.0.0.3"},
+	}
+	json, _ := json.Marshal(rr)
 	opt := new(dns.OPT)
 	opt.Hdr.Name = "."
 	opt.Hdr.Rrtype = dns.TypeOPT
 	e := new(dns.EDNS0_LOCAL)
-	e.Code = dns.EDNS0LOCALSTART
-	e.Data = []byte("_rr_state=10.0.0.1,10.0.0.2,10.0.0.3")
+	e.Code = dns.EDNS0LOCALSTART +10//.EDNS0LOCALSTART
+	e.Data = append([]byte("_rr_state="),json...)
 	opt.Option = append(opt.Option, e)
 	msg.Extra = append(msg.Extra, opt)
 }

@@ -1,0 +1,19 @@
+# Ignore everything
+*
+
+# But not these files...
+!go.mod
+!go.sum
+!README.md
+!.gitignore
+!main.go
+!Makefile
+!run.sh
+!*.yaml
+!Dockerfile
+
+# ...even if they are in subdirectories
+!*/
+
+# except gitignore
+/**/.gitignore

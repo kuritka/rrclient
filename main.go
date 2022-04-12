@@ -13,15 +13,10 @@ const (
 
 
 type RoundRobinState struct {
-	Family uint16   `json:"type"`
 	IPs    []string `json:"ip"`
 }
 
-func appendOpt(msg *dns.Msg) {
-	var rr = RoundRobinState{
-		Family: dns.TypeA,
-		IPs:    []string{"10.0.0.1","10.0.0.2","10.0.0.3"},
-	}
+func appendOpt(msg *dns.Msg,rr RoundRobinState) {
 	json, _ := json.Marshal(rr)
 	opt := new(dns.OPT)
 	opt.Hdr.Name = "."
@@ -33,20 +28,37 @@ func appendOpt(msg *dns.Msg) {
 	msg.Extra = append(msg.Extra, opt)
 }
 
-func request(){
+func request(rr RoundRobinState){
 	msg := new(dns.Msg)
 	msg.SetQuestion("cloud.example.com.", dns.TypeA)
-	appendOpt(msg)
-	fmt.Println("\n--------------")
-	fmt.Println("online bytes converter: https://onlinestringtools.com/convert-bytes-to-string")
-	fmt.Println(msg)
-	fmt.Println("\n-------------")
+	appendOpt(msg, rr)
 	result, err := dns.Exchange(msg, fmt.Sprintf("%s:%v", server, port))
 	kingpin.FatalIfError(err,"Check if CoreDNS is running on port %s", port)
-	fmt.Println(result)
+	str := fmt.Sprintf("\n-------------- https://onlinestringtools.com/convert-bytes-to-string -------\n%s\n-------------\n%s",msg.String(), result.String())
+	rr = RoundRobinState{}
+	for _, a := range result.Answer {
+		switch a.Header().Rrtype{
+		case dns.TypeA:
+			rr.IPs = append(rr.IPs, a.(*dns.A).A.String())
+		case dns.TypeAAAA:
+			rr.IPs = append(rr.IPs, a.(*dns.AAAA).AAAA.String())
+		}
+	}
+	fmt.Println(str)
+	completed <- rr
 }
+
+var completed chan RoundRobinState
 
 // Round Robin EDNS0 client
 func main(){
-	request()
+	completed = make(chan RoundRobinState)
+	var rr = RoundRobinState{}
+	for {
+		go request(rr)
+		rr = <-completed
+		fmt.Println(rr)
+		fmt.Println("Press the Enter Key continue")
+		_,_ = fmt.Scanln()
+	}
 }

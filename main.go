@@ -11,7 +11,6 @@ const (
 	server string = "localhost"
 )
 
-
 type RoundRobinState struct {
 	IPs    []string `json:"ip"`
 }
@@ -22,13 +21,13 @@ func appendOpt(msg *dns.Msg,rr RoundRobinState) {
 	opt.Hdr.Name = "."
 	opt.Hdr.Rrtype = dns.TypeOPT
 	e := new(dns.EDNS0_LOCAL)
-	e.Code = dns.EDNS0LOCALSTART +10//.EDNS0LOCALSTART
+	e.Code = dns.EDNS0LOCALSTART //.EDNS0LOCALSTART
 	e.Data = append([]byte("_rr_state="),json...)
 	opt.Option = append(opt.Option, e)
 	msg.Extra = append(msg.Extra, opt)
 }
 
-func request(rr RoundRobinState){
+func requestStateless(rr RoundRobinState){
 	msg := new(dns.Msg)
 	msg.SetQuestion("cloud.example.com.", dns.TypeA)
 	appendOpt(msg, rr)
@@ -48,17 +47,31 @@ func request(rr RoundRobinState){
 	completed <- rr
 }
 
+func requestStateful(){
+	msg := new(dns.Msg)
+	msg.SetQuestion("cloud.example.com.", dns.TypeA)
+	result, err := dns.Exchange(msg, fmt.Sprintf("%s:%v", server, port))
+	kingpin.FatalIfError(err,"Check if CoreDNS is running on port %s", port)
+	fmt.Println(result)
+	completed <- RoundRobinState{}
+}
+
+
 var completed chan RoundRobinState
 
 // Round Robin EDNS0 client
 func main(){
 	completed = make(chan RoundRobinState)
-	var rr = RoundRobinState{}
+	//var rr = RoundRobinState{}
 	for {
-		go request(rr)
-		rr = <-completed
-		fmt.Println(rr)
-		fmt.Println("Press the Enter Key continue")
+		go requestStateful()
+		<- completed
+		//rr = <-completed
+		fmt.Println("Press the Enter to continue")
 		_,_ = fmt.Scanln()
 	}
+	close(completed)
 }
+
+
+

@@ -9,6 +9,7 @@ import (
 const (
 	port int =  5056
 	server string = "localhost"
+
 )
 
 type RoundRobinState struct {
@@ -49,7 +50,7 @@ func requestStateless(rr RoundRobinState){
 
 func requestStateful(){
 	msg := new(dns.Msg)
-	msg.SetQuestion("cloud.example.com.", dns.TypeA)
+	msg.SetQuestion("test.example.com.", dns.TypeA)
 	result, err := dns.Exchange(msg, fmt.Sprintf("%s:%v", server, port))
 	kingpin.FatalIfError(err,"Check if CoreDNS is running on port %s", port)
 	fmt.Println(result)

@@ -7,7 +7,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 const (
-	port int =  5056
+	port int =  8056
 	server string = "localhost"
 
 )
@@ -63,15 +63,25 @@ var completed chan RoundRobinState
 // Round Robin EDNS0 client
 func main(){
 	completed = make(chan RoundRobinState)
-	//var rr = RoundRobinState{}
+	var rr = RoundRobinState{}
 	for {
-		go requestStateful()
-		<- completed
-		//rr = <-completed
+		go requestStateless(rr)
+		//<- completed
+		rr = <-completed
 		fmt.Println("Press the Enter to continue")
 		_,_ = fmt.Scanln()
 	}
 	close(completed)
+	// --- statefull
+	//completed = make(chan RoundRobinState)
+	//for {
+	//	go requestStateful()
+	//	<- completed
+	//	fmt.Println("Press the Enter to continue")
+	//	_,_ = fmt.Scanln()
+	//}
+	//close(completed)
+
 }
 
 
